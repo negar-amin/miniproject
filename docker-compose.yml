@@ -1,0 +1,182 @@
+version: '2'
+
+services:
+  ubuntu_container:
+    image: ubuntu:latest
+    container_name: my_ubuntu_container
+    command: tail -f /dev/null
+    volumes:
+      - ./codes:/codes
+    networks:
+      - services
+  zookeeper1:
+    image: confluentinc/cp-zookeeper:$CP_VERSION
+    container_name: zookeeper1
+    hostname: zookeeper1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_SERVERS: "zookeeper1:22888:23888;zookeeper2:22888:23888;zookeeper3:22888:23888"
+    ports:
+      - 2181:2181
+    volumes: 
+      - ./data/zoo-1/data:/var/lib/zookeeper/data
+      - ./data/zoo-1/log:/var/lib/zookeeper/log
+    networks:
+      - services
+    restart: on-failure:10
+  postgres:
+    container_name: ${CONTAINER_NAME:-postgres}
+    hostname: ${CONTAINER_NAME:-postgres}
+    image: postgres:${PG_VERSION:-16}
+    volumes:
+      - ./${DATA_FOLDER:-db_data}:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d  # Mounting the init script
+      - ./backup:/backup
+      - ./archive:/archive
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASS:-postgres123}
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_DB=${DB_NAME:-dblab}
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    networks:
+      - services
+    ports:
+      - ${PORT:-5434}:5432
+
+    restart: always
+
+  zookeeper2:
+    image: confluentinc/cp-zookeeper:$CP_VERSION
+    container_name: zookeeper2
+    hostname: zookeeper2
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SERVER_ID: 2
+      ZOOKEEPER_SERVERS: "zookeeper1:22888:23888;zookeeper2:22888:23888;zookeeper3:22888:23888"
+    ports:
+      - 2182:2181
+    volumes: 
+      - ./data/zoo-2/data:/var/lib/zookeeper/data
+      - ./data/zoo-2/log:/var/lib/zookeeper/log
+    networks:
+      - services
+    restart: on-failure:10
+
+  zookeeper3:
+    image: confluentinc/cp-zookeeper:$CP_VERSION
+    container_name: zookeeper3
+    hostname: zookeeper3
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SERVER_ID: 3
+      ZOOKEEPER_SERVERS: "zookeeper1:22888:23888;zookeeper2:22888:23888;zookeeper3:22888:23888"
+    ports:
+      - 2183:2181
+    volumes: 
+      - ./data/zoo-3/data:/var/lib/zookeeper/data
+      - ./data/zoo-3/log:/var/lib/zookeeper/log
+    networks:
+      - services
+    restart: on-failure:10
+
+  kafka1:
+    image: confluentinc/cp-kafka:$CP_VERSION
+    container_name: kafka1
+    hostname: kafka1
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    ports:
+      - 9091:9091
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://:29092,OUTSIDE://:9091
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka1:29092,OUTSIDE://kafka1:9091
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/logs
+    networks:
+      - services
+    restart: on-failure:10
+
+  kafka2:
+    image: confluentinc/cp-kafka:$CP_VERSION
+    container_name: kafka2
+    hostname: kafka2
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://:29092,OUTSIDE://:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka2:29092,OUTSIDE://kafka2:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/logs
+    networks:
+      - services
+    restart: on-failure:10
+
+  kafka3:
+    image: confluentinc/cp-kafka:$CP_VERSION
+    container_name: kafka3
+    hostname: kafka3
+    depends_on:
+      - zookeeper1
+      - zookeeper2
+      - zookeeper3
+    ports:
+      - 9093:9093
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://:29092,OUTSIDE://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka3:29092,OUTSIDE://kafka3:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/logs
+    networks:
+      - services
+    restart: on-failure:10
+
+
+  kafkaHQ:
+    image: tchiotludo/akhq
+    container_name: kafkaHQ
+    hostname: kafkaHQ
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    ports :
+      - 9100:8080
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            docker-kafka-server:
+              properties:
+                bootstrap.servers: "kafka1:29092,kafka2:29092,kafka3:29092"
+                
+    networks:
+      - services
+    restart: on-failure:10
+    # restart: always
+
+networks: 
+  services:
+    name: ${APP_NAME:-filoger}_network
+

@@ -1,0 +1,37 @@
+1)open new terminal run docker exec -it postgres bash
+
+2)run su postgres
+
+3)run pg_basebackup -D /backup/standalone-"$(date +%Y-%m-%dT%H-%M)" -c fast -P -R 
+
+4)copy postgresql.conf in miniproject folder and replace it with postgresql.conf file in directory miniproject/db_data
+
+5)in miniproject folder open a terminal run docker compose down then again run  docker compose up
+
+6) run steps 1 and 2 again
+
+7)run createdb sample
+
+8)run pgbench -i -s 10 sample
+
+9)if you check miniproject/archive you can see wal files are saving now
+
+10)open new terminal in miniproject folder and run docker compose down
+
+11)go to miniproject/db_data delete all the files and folders inside db_data folder
+
+12)copy all files and folders from miniproject/backup/standalone-<timestamp of your base backup> directory to miniproject/db_data
+
+13)rename standby.signal to recovery.signal
+
+14) run step 4 again
+
+15) open new terminal in miniproject folder and run docker compose up
+
+16)run stap 1 and 2 again then run psql
+then run \l you must see sample db 
+run \c sample 
+run select count(*) from pgbench_accounts;
+you must see 1000000 as output and we recovered all out data back
+
+Thanks for following my solution until here I really appreciate it :))))
