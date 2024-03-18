@@ -1,7 +1,10 @@
 please make sure you are connected to internet and docker engine is installed on your system then follow bellow steps it's recommended to turn your vpn on.
 steps marked with * are critical for further steps to be done successfully so make sure * steps to be done without any error please do not interrupt them with ctrl+c.
 
-*1)first open docker desktop then open terminal in miniproject folder and run docker compose up
+*1)first open docker desktop then open terminal in miniproject folder and run docker compose up. if you have problem in this stage please make sure you copy paste bellow lines to hosts file in directory C:\Windows\System32\drivers\etc:
+127.0.0.1 kafka1
+127.0.0.1 kafka2
+127.0.0.1 kafka3
 
 *2)open new terminal (not matter in which directory you open it) run docker exec -it my_ubuntu_container bash
 then run cd /codes
