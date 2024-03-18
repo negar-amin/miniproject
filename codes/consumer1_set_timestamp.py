@@ -18,4 +18,5 @@ for message in consumer:
     message.value['insert_into_database_timestamp']=time.time()
     print(message.value)
     producer.send('processed_once', json.dumps(message.value).encode('utf-8'))
+    time.sleep(5)
 

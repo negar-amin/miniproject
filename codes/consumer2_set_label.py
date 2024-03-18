@@ -1,5 +1,6 @@
 from faker import Faker
 import json
+import time
 from kafka import KafkaConsumer, KafkaProducer
 
 TOPIC_NAME = 'processed_once'
@@ -19,3 +20,4 @@ for message in consumer:
     message.value['status']='looking for job' if fake.random_int(0, 1) == 1 else 'hired'
     print(message.value)
     producer.send('processed_twice', json.dumps(message.value).encode('utf-8'))
+    time.sleep(2)

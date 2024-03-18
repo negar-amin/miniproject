@@ -1,6 +1,7 @@
 import psycopg2
 import json
 from kafka import KafkaConsumer
+import time
 
 # Connect to the PostgreSQL database
 conn = psycopg2.connect(
@@ -70,6 +71,7 @@ for message in consumer:
     ]
     cursor.executemany(insert_query, data_to_insert)
     conn.commit()
+    time.sleep(2)
 
 # Close the cursor and connection
 cursor.close()
